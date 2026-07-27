@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>매불쇼 신입 작가 생존기</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; }
+  body { font-family: "Pretendard","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; color:#e8e8e8; cursor:none; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; width:100%; height:100%; }
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  #overlay { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+             background:#05070a; transition:opacity .6s ease; }
+  #overlay.hidden { opacity:0; pointer-events:none; }
+  #boot { text-align:center; letter-spacing:.4em; }
+  #boot h1 { font-size:clamp(32px,7vw,86px); font-weight:800; letter-spacing:.18em; }
+  #boot .sub { margin-top:14px; font-size:13px; opacity:.55; letter-spacing:.35em; }
+  #bar { margin:34px auto 0; width:min(420px,60vw); height:2px; background:#1a1f26; }
+  #bar > i { display:block; height:100%; width:0%; background:#c9a227; transition:width .25s ease; }
+  #err { position:fixed; left:0; right:0; bottom:0; max-height:45%; overflow:auto; z-index:99;
+         background:#2a0a0a; color:#ffb3b3; font:12px/1.5 ui-monospace,monospace; padding:10px; display:none; white-space:pre-wrap; }
+  #gate { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center;
+          background:rgba(6,8,12,.96); cursor:pointer; padding:24px; }
+  #gate.show { display:flex; }
+  #gate .box { max-width:700px; text-align:center; }
+  #gate .eyebrow { font-size:12px; letter-spacing:.3em; color:#ffc94d; font-weight:700; margin-bottom:14px; }
+  #gate h2 { font-size:clamp(30px,6vw,52px); font-weight:800; letter-spacing:.02em; margin-bottom:8px; }
+  #gate .go { font-size:15px; color:#ffc94d; letter-spacing:.14em; margin:22px 0 28px; }
+  #gate .story { font-size:14.5px; color:#c7c7c7; line-height:1.85; margin-bottom:26px; }
+  #gate .keys { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:9px 22px;
+                text-align:left; font-size:13px; color:#b9b9b9; margin-bottom:24px; }
+  #gate .keys b { color:#fff; font-weight:700; }
+  #gate .warn { font-size:11.5px; color:#7f7f7f; line-height:1.8; }
+  #gate a { color:#9ab7ff; }
+</style>
+  <script type="module" crossorigin src="./assets/index-BOjC9WZD.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="hud"></div>
+  <div id="overlay"><div id="boot">
+    <h1>매불쇼</h1>
+    <div class="sub">신입 작가 생존기</div>
+    <div id="bar"><i></i></div>
+    <div class="sub" id="bootmsg" style="margin-top:18px;opacity:.35">스튜디오 준비 중</div>
+  </div></div>
+  <pre id="err"></pre>
+
+  <div id="gate"><div class="box">
+    <div class="eyebrow">MAEBULSHOW EDITION</div>
+    <h2>매불쇼 신입 작가 생존기</h2>
+    <div class="story">
+      오늘 첫 출근. 생방송까지 10분.<br>
+      그런데 오늘 쓸 사연 카드가 통째로 날아갔다.<br>
+      야외 세트에 흩어진 다섯 장을 찾아 부스로 돌아가라.
+    </div>
+    <div class="go">화면을 클릭하면 시작됩니다</div>
+    <div class="keys">
+      <div><b>W A S D</b> &nbsp;이동</div>
+      <div><b>마우스</b> &nbsp;둘러보기</div>
+      <div><b>Shift</b> &nbsp;달리기</div>
+      <div><b>Space</b> &nbsp;점프</div>
+      <div><b>스페이스 / 클릭</b> &nbsp;대사 넘기기</div>
+      <div><b>Esc</b> &nbsp;마우스 해제</div>
+    </div>
+    <div class="warn">
+      이 게임은 팬메이드 패러디이며, 등장하는 모든 대사는 창작입니다. 실제 인물의 발언이 아닙니다.<br>
+      전투 요소는 포함되어 있지 않습니다. 브라우저 WebGL로 동작하며 PC 사양에 따라 프레임이 달라집니다.<br>
+      <a href="https://github.com/socialkim/blacksite-fps">원본 프로젝트(BLACKSITE) 보기</a>
+    </div>
+  </div></div>
+  <script>
+  (function () {
+    var gate = document.getElementById('gate');
+    var t = setInterval(function () {
+      if (window.__GAME && window.__GAME.ready) { clearInterval(t); gate.classList.add('show'); }
+    }, 200);
+    gate.addEventListener('click', function () { gate.classList.remove('show'); }, { once: true });
+  })();
+  </script>
+</body>
+</html>
