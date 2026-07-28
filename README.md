@@ -34,6 +34,10 @@
 | 앉기 | `Ctrl` 또는 `C` |
 | 점프 | `Space` |
 | 좌우 기울이기 | `Q` / `E` |
+| 사격 | 마우스 좌클릭 |
+| 조준 | 마우스 우클릭 유지 |
+| 재장전 | `R` |
+| 1인칭 / 3인칭 | `V` |
 | 대사 넘기기 | `Space` 또는 클릭 |
 | 마우스 해제 | `Esc` |
 
@@ -69,13 +73,13 @@
 
 ## 구현 구조
 
-전투 제거와 스토리 진행은 전부 `src/story/Story.js` 한 파일에 모여 있습니다.
+스토리 진행과 한글 HUD 는 전부 `src/story/Story.js` 한 파일에 모여 있습니다.
 원본 모듈들은 거의 손대지 않았습니다 — 바꾼 것은 다음 세 곳뿐입니다.
 
 ```
-src/core/Config.js     ai.count : 14 → 0        (적 스폰 차단)
+src/core/Config.js     ai.count : 14 → 10       (상대 팀 수 조정)
 src/main.js            Story 모듈을 마지막 단계로 추가
-src/story/Story.js     신규 — 내러티브 레이어 전체
+src/story/Story.js     신규 — 내러티브 레이어 + 한글 HUD 전체
 ```
 
 `Story.js`가 하는 일:
@@ -113,8 +117,18 @@ node tools/storycheck.mjs   # 부팅 → 인트로 → 카드 5장 → 엔딩까
 booted        : true
 카드 회수     : 5 / 5
 엔딩 도달     : true
-적 수         : 0 | 무기 숨김: true | 원본HUD 숨김: true
 콘솔 이슈     : 0
+```
+
+```bash
+node tools/combatcheck.mjs   # 적 스폰 · 사격 · 탄약 HUD 동작 확인
+```
+
+```
+적 스폰      : 10 | 무기 표시: true
+탄약 HUD     : 30 / 210 → 24 / 210
+사격         : mag 30 → 24 | 발사 수 6
+콘솔 이슈    : 0
 ```
 
 ---
