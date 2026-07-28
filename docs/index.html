@@ -78,14 +78,18 @@
   <script>
   (function () {
     var gate = document.getElementById('gate');
-    var t = setInterval(function () {
-      if (window.__GAME && window.__GAME.ready) { clearInterval(t); gate.classList.add('show'); }
-    }, 200);
-    // 게이트가 뜨기 전에 클릭한 경우에도 반드시 닫히도록 한 번만 걸지 않는다.
-    var close = function () { gate.classList.remove('show'); };
+    var dismissed = false;
+    var close = function () { dismissed = true; gate.classList.remove('show'); };
+    // 로딩 중에 이미 눌렀다면 게이트를 아예 띄우지 않는다.
+    window.addEventListener('pointerdown', close, true);
+    window.addEventListener('keydown', close, true);
     gate.addEventListener('click', close);
-    gate.addEventListener('touchstart', close, { passive: true });
-    window.addEventListener('keydown', close);
+    var t = setInterval(function () {
+      if (window.__GAME && window.__GAME.ready) {
+        clearInterval(t);
+        if (!dismissed) gate.classList.add('show');
+      }
+    }, 200);
   })();
   </script>
 </body>
