@@ -42,9 +42,9 @@ export const Config = {
     damage: 34, headMul: 2.4, range: 220,
   },
 
-  // 매불쇼 에디션 — 전투를 제거했다. 적 스폰 수를 0으로 고정한다.
-  // (원본 BLACKSITE 는 14. 이 값만 바꾸면 Enemies 모듈이 아무도 만들지 않는다.)
-  ai: { count: 0, sightRange: 90, fov: 120, reactionTime: 0.28 },
+  // 매불쇼 에디션 — 서바이벌 특집 설정. 상대 팀은 원본 엔진의 익명 병사 그대로다.
+  // 원본은 14. 스토리 진행이 막히지 않도록 조금 낮춰 10으로 둔다.
+  ai: { count: 10, sightRange: 90, fov: 120, reactionTime: 0.28 },
 
   // 3인칭 아바타 외형 — 'staff'(매불쇼 스태프) | 'operator'(원본)
   avatar: { variant: 'staff' },

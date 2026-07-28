@@ -2,16 +2,18 @@
 //  Story.js — 매불쇼 신입 작가 생존기 : 내러티브 레이어
 //
 //  이 모듈은 BLACKSITE 엔진(렌더링·레벨·이동) 위에 얹히는 스토리 계층이다.
-//  전투는 전부 비활성화하고, 대신 다음을 담당한다.
+//  전투는 원본 그대로 두고, 다음을 담당한다.
 //
-//   · 원본 HUD를 숨기고 한글 DOM HUD를 새로 그린다
-//   · 사격 입력을 차단하고 1인칭 무기 뷰모델을 숨긴다
+//   · 원본 영문 HUD를 숨기고 한글 DOM HUD를 새로 그린다 (목표·시간·탄약·카드)
 //   · 월드에 '사연 카드' 수집품을 배치하고 근접 획득을 처리한다
 //   · 대화 박스를 띄우고 그동안 플레이어 입력을 얼어붙게 한다 (튜토리얼 진행)
 //   · 남은 방송 시간 카운트다운과 엔딩을 관리한다
 //
+//  전투는 원본 BLACKSITE 엔진 그대로다 (사격·적 AI·탄도).
+//
 //  ⚠ 이 게임에 등장하는 모든 대사는 창작입니다. 실제 인물의 발언이 아닙니다.
-//    실존 인물을 공격 대상으로 삼는 요소는 의도적으로 전부 제거했습니다.
+//    등장하는 상대 팀은 원본 엔진의 익명 병사이며, 실존 인물을 형상화하거나
+//    공격 대상으로 삼지 않습니다. 설정상 '서바이벌 특집 촬영'입니다.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CARD_COLOR = 0xffc94d;
@@ -30,11 +32,12 @@ const GOAL = { x: 0, z: 17.5 };
 
 // ── 대사 데이터 ──────────────────────────────────────────────────────────────
 const INTRO = [
-  ['PD',       '야, 신입! 오늘 첫 출근인 건 아는데… 지금 그럴 때가 아니야.'],
-  ['PD',       '생방 10분 전인데 오늘 쓸 사연 카드가 통째로 날아갔어. 야외 세트에 다섯 장 흩어졌다.'],
-  ['최욱',     '어이 신입. 카드 없으면 나 10분 동안 혼자 떠들어야 돼. 그건 방송이 아니라 사고야.'],
-  ['PD',       'W A S D 로 움직이고, 마우스로 둘러봐. 카드 근처로 가면 알아서 주워진다.'],
-  ['PD',       '다섯 장 다 모아서 파란 표시가 뜬 부스로 복귀해. 가자!'],
+  ['PD',       '야, 신입! 첫 출근인데 하필 오늘이 특집이야.'],
+  ['PD',       '여기 \"매불쇼 서바이벌 특집\" 촬영장이다. 페인트탄이라 안 죽어. 아프기만 해.'],
+  ['최욱',     '어이 신입. 근데 진짜 문제는 그게 아니야. 오늘 쓸 사연 카드가 세트에 다 흩어졌어.'],
+  ['최욱',     '상대 팀이 세트 안에 쫙 깔렸다. 알아서 뚫고 다섯 장 회수해.'],
+  ['PD',       '좌클릭 사격, 우클릭 조준, R 재장전. 카드 근처로 가면 알아서 주워진다.'],
+  ['PD',       '방송까지 4분. 가자!'],
 ];
 
 const PICKUP = {
@@ -83,7 +86,7 @@ export class Story {
   }
 
   async init() {
-    this._killCombat();
+    this._setupOverlay();
     this._buildUI();
     this._buildPickups();
     this._bindInput();
@@ -91,29 +94,20 @@ export class Story {
     this.state = 'boot';
   }
 
-  // ── 전투 제거 ──────────────────────────────────────────────────────────────
-  _killCombat() {
-    const g = this.g;
+  // ── 표시 계층 준비 ─────────────────────────────────────────────────────────
+  //  전투(사격·적 AI·탄도)는 원본 엔진 그대로 둔다. 여기서는 영문 HUD만 걷어내고
+  //  한글 HUD 를 대신 그린다. 사격 입력은 건드리지 않는다.
+  _setupOverlay() {
     // 플레이어가 게임 안으로 들어왔는지 기록 (포인터 락이 막힌 브라우저 대비).
     // 어떤 것도 막지 않고 표시만 남기므로 반드시 첫 번째 리스너여야 한다.
     this._entered = false;
-    window.addEventListener('mousedown', () => { this._entered = true; }, true);
-    // 1인칭 무기 뷰모델을 씬 루트에서 숨긴다 (three는 visible=false 인 루트를 건너뛴다)
-    try { if (g.weapon?.viewmodelScene) g.weapon.viewmodelScene.visible = false; } catch (e) {}
-    // 원본 영문 HUD(캔버스)를 숨긴다 — 한글 HUD를 직접 그린다
+    const mark = () => { this._entered = true; };
+    for (const t of ['mousedown', 'pointerdown', 'touchstart', 'keydown']) {
+      window.addEventListener(t, mark, true);
+    }
+    // 원본 영문 HUD(캔버스)를 숨긴다 — 조준점·탄약까지 한글 HUD 로 직접 그린다
     const hud = document.getElementById('hud');
     if (hud) hud.style.display = 'none';
-    // 포인터 락이 걸린 상태에서의 클릭은 삼킨다 → 사격이 발생하지 않는다.
-    // 락을 얻기 위한 최초 클릭은 통과시켜야 하므로 락 여부로 구분한다.
-    this._eatFire = (e) => {
-      if (this.paused) return;              // 대화 중이면 _block 이 처리한다
-      if (!document.pointerLockElement) return;  // 락을 얻기 위한 최초 클릭은 통과
-      e.stopImmediatePropagation();
-      e.preventDefault();
-    };
-    for (const t of ['mousedown', 'mouseup', 'contextmenu']) {
-      window.addEventListener(t, this._eatFire, true);
-    }
   }
 
   // ── 입력 ──────────────────────────────────────────────────────────────────
@@ -217,9 +211,21 @@ export class Story {
         #st-hint { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
                    font-size: 15px; color: #ffe9b0; opacity: 0; transition: opacity .3s; }
         #st-hint.on { opacity: 1; }
-        #st-cross { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
-                    margin: -2.5px 0 0 -2.5px; border-radius: 50%;
-                    background: rgba(255,255,255,.65); }
+        #st-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px;
+                    margin: -11px 0 0 -11px; }
+        #st-cross i { position: absolute; background: rgba(255,255,255,.85); }
+        #st-cross i:nth-child(1) { left: 10px; top: 0;  width: 2px; height: 7px; }
+        #st-cross i:nth-child(2) { left: 10px; top: 15px; width: 2px; height: 7px; }
+        #st-cross i:nth-child(3) { left: 0;  top: 10px; width: 7px; height: 2px; }
+        #st-cross i:nth-child(4) { left: 15px; top: 10px; width: 7px; height: 2px; }
+        #st-ammo { position: absolute; right: 30px; bottom: 26px; text-align: right; }
+        #st-ammo .w { font-size: 12px; color: #cfcfcf; letter-spacing: .14em; font-weight: 700; }
+        #st-ammo .n { font-size: 42px; font-weight: 800; line-height: 1.05;
+                      font-variant-numeric: tabular-nums; }
+        #st-ammo .n small { font-size: 17px; color: #9aa0a8; font-weight: 700; }
+        #st-ammo .n.low { color: #ff6a5a; }
+        #st-kill { position: absolute; left: 30px; bottom: 26px; font-size: 13px; color: #cfcfcf; }
+        #st-kill b { color: #ffc94d; font-size: 18px; }
         #st-toast { position: absolute; left: 50%; top: 27%; transform: translateX(-50%);
                     font-size: 30px; font-weight: 800; color: #ffc94d; opacity: 0;
                     transition: opacity .35s, transform .35s; }
@@ -251,7 +257,10 @@ export class Story {
       </div>
       <div id="st-clock"><div id="st-cl-l">방송까지</div><div id="st-cl">4:00</div></div>
       <div id="st-cards"></div>
-      <div id="st-cross"></div>
+      <div id="st-cross"><i></i><i></i><i></i><i></i></div>
+      <div id="st-ammo"><div class="w" id="st-wname">M4A1</div>
+        <div class="n" id="st-mag">30<small> / 210</small></div></div>
+      <div id="st-kill">제압 <b id="st-kills">0</b></div>
       <div id="st-toast"></div>
       <div id="st-hint"></div>
       <div id="st-dlg">
@@ -277,6 +286,9 @@ export class Story {
       hint: document.getElementById('st-hint'),
       toast: document.getElementById('st-toast'),
       end:  document.getElementById('st-end'),
+      wname: document.getElementById('st-wname'),
+      mag:  document.getElementById('st-mag'),
+      kills: document.getElementById('st-kills'),
       endT: document.getElementById('st-end-t'),
       cross: document.getElementById('st-cross'),
     };
@@ -349,9 +361,31 @@ export class Story {
   update(dt) {
     this.elapsed += dt;
 
+    // 탄약 / 제압 수 — 원본 엔진 값을 그대로 읽어 한글 HUD 에 반영한다.
+    // 인트로 이전에도 HUD 는 살아 있어야 하므로 boot 분기보다 위에 둔다.
+    const w = this.g.weapon;
+    if (w && this.ui.mag) {
+      const mag = w.mag ?? 0, res = w.reserve ?? 0;
+      this.ui.mag.innerHTML = mag + '<small> / ' + res + '</small>';
+      this.ui.mag.classList.toggle('low', mag <= 6);
+      if (this.ui.wname && w.name && this._wname !== w.name) {
+        this._wname = w.name; this.ui.wname.textContent = w.name;
+      }
+    }
+    const kills = this.g.ballistics?.stats?.kills ?? 0;
+    if (kills !== this._kills) {
+      this._kills = kills;
+      if (this.ui.kills) this.ui.kills.textContent = kills;
+      if (kills === 1 && !this._firstBlood && this.state !== 'boot') {
+        this._firstBlood = true;
+        this.say([['최욱', '오, 하나 잡았네. 페인트탄이니까 죄책감 갖지 마.'],
+                  ['PD',   '상대 팀도 저러고 촬영비 받는 거야. 계속 가자.']]);
+      }
+    }
+
     // 시작 게이트를 지나 실제로 조작이 시작되면 인트로를 연다
     if (this.state === 'boot') {
-      if ((document.pointerLockElement || this._entered) && this.elapsed > 0.4) {
+      if ((document.pointerLockElement || this._entered) && this.elapsed > 0.15) {
         this.state = 'intro';
         this.say(INTRO, () => {
           this.state = 'hunt';
