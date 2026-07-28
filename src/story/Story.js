@@ -130,7 +130,7 @@ export class Story {
   // ── 수집품 ────────────────────────────────────────────────────────────────
   _buildPickups() {
     const T = this.THREE;
-    const cardGeo = new T.BoxGeometry(0.42, 0.58, 0.03);
+    const cardGeo = new T.BoxGeometry(0.55, 0.76, 0.04);
     const ringGeo = new T.TorusGeometry(0.52, 0.022, 8, 40);
 
     for (const c of CARDS) {
@@ -139,7 +139,7 @@ export class Story {
 
       const mat = new T.MeshStandardMaterial({
         color: CARD_COLOR, emissive: CARD_COLOR, emissiveIntensity: 1.5,
-        roughness: 0.55, metalness: 0.0,
+        roughness: 0.5, metalness: 0.0, emissiveIntensity: 2.2,
       });
       const card = new T.Mesh(cardGeo, mat);
       card.castShadow = false; card.receiveShadow = false;
@@ -153,11 +153,11 @@ export class Story {
 
       // 멀리서도 보이도록 세로 광선 기둥
       const beam = new T.Mesh(
-        new T.CylinderGeometry(0.06, 0.06, 6, 8, 1, true),
-        new T.MeshBasicMaterial({ color: CARD_COLOR, transparent: true, opacity: 0.13,
+        new T.CylinderGeometry(0.16, 0.16, 14, 10, 1, true),
+        new T.MeshBasicMaterial({ color: CARD_COLOR, transparent: true, opacity: 0.30,
                                   side: T.DoubleSide, depthWrite: false })
       );
-      beam.position.y = 2.6;
+      beam.position.y = 6.5;
       grp.add(beam);
 
       this.g.scene.add(grp);
@@ -226,6 +226,51 @@ export class Story {
         #st-ammo .n.low { color: #ff6a5a; }
         #st-kill { position: absolute; left: 30px; bottom: 26px; font-size: 13px; color: #cfcfcf; }
         #st-kill b { color: #ffc94d; font-size: 18px; }
+
+        /* 체력 */
+        #st-hp { position: absolute; left: 30px; bottom: 62px; width: 260px; }
+        #st-hp .l { font-size: 11px; letter-spacing: .22em; color: #ffc94d; font-weight: 700;
+                    display: flex; justify-content: space-between; }
+        #st-hp .l b { color: #fff; font-size: 15px; letter-spacing: 0; }
+        #st-hp .bar { height: 10px; margin-top: 5px; border-radius: 5px; overflow: hidden;
+                      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.22); }
+        #st-hp .bar i { display: block; height: 100%; width: 100%; border-radius: 5px;
+                        background: linear-gradient(90deg,#5ad07a,#9ee87f);
+                        transition: width .18s ease, background .2s; }
+        #st-hp .bar i.mid { background: linear-gradient(90deg,#ffc94d,#ffe08a); }
+        #st-hp .bar i.low { background: linear-gradient(90deg,#ff5a4f,#ff8a7a); }
+        #st-dmg { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+                  box-shadow: inset 0 0 190px 40px rgba(200,20,20,.85); transition: opacity .35s; }
+        #st-dmg.on { opacity: 1; transition: opacity .05s; }
+
+        /* 적중 표시 */
+        #st-hit { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px;
+                  margin: -17px 0 0 -17px; opacity: 0; transform: scale(1.5);
+                  transition: opacity .22s, transform .22s; }
+        #st-hit.on { opacity: 1; transform: scale(1); transition: none; }
+        #st-hit i { position: absolute; width: 13px; height: 2.5px; background: #fff;
+                    left: 10px; top: 16px; border-radius: 2px; }
+        #st-hit i:nth-child(1) { transform: rotate(45deg)  translate(-9px,0); }
+        #st-hit i:nth-child(2) { transform: rotate(-45deg) translate(-9px,0); }
+        #st-hit i:nth-child(3) { transform: rotate(45deg)  translate(9px,0); }
+        #st-hit i:nth-child(4) { transform: rotate(-45deg) translate(9px,0); }
+        #st-hit.kill i { background: #ff5a4f; }
+
+        /* 월드 마커 */
+        #st-wp { position: absolute; inset: 0; overflow: hidden; }
+        .wp { position: absolute; transform: translate(-50%,-50%); text-align: center;
+              white-space: nowrap; }
+        .wp .ic { display: inline-grid; place-items: center; width: 30px; height: 30px;
+                  border-radius: 50%; border: 2px solid #ffc94d; color: #ffc94d;
+                  background: rgba(0,0,0,.45); font-size: 13px; font-weight: 800; }
+        .wp .d { margin-top: 3px; font-size: 12px; font-weight: 700; color: #ffe9b0; }
+        .wp.off .ic { background: #ffc94d; color: #12161c; }
+        .wp.enemy .ic { width: 15px; height: 15px; border-color: #ff5a4f; border-width: 2px;
+                        background: rgba(0,0,0,.3); transform: rotate(45deg); border-radius: 3px; }
+        .wp.enemy .d { display: none; }
+        .wp.enemy .hb { width: 34px; height: 4px; margin: 4px auto 0; border-radius: 2px;
+                        background: rgba(0,0,0,.6); overflow: hidden; }
+        .wp.enemy .hb i { display: block; height: 100%; background: #ff5a4f; }
         #st-toast { position: absolute; left: 50%; top: 27%; transform: translateX(-50%);
                     font-size: 30px; font-weight: 800; color: #ffc94d; opacity: 0;
                     transition: opacity .35s, transform .35s; }
@@ -261,6 +306,11 @@ export class Story {
       <div id="st-ammo"><div class="w" id="st-wname">M4A1</div>
         <div class="n" id="st-mag">30<small> / 210</small></div></div>
       <div id="st-kill">제압 <b id="st-kills">0</b></div>
+      <div id="st-hp"><div class="l"><span>체력</span><b id="st-hpn">100</b></div>
+        <div class="bar"><i id="st-hpb"></i></div></div>
+      <div id="st-dmg"></div>
+      <div id="st-hit"><i></i><i></i><i></i><i></i></div>
+      <div id="st-wp"></div>
       <div id="st-toast"></div>
       <div id="st-hint"></div>
       <div id="st-dlg">
@@ -289,6 +339,11 @@ export class Story {
       wname: document.getElementById('st-wname'),
       mag:  document.getElementById('st-mag'),
       kills: document.getElementById('st-kills'),
+      hpn:  document.getElementById('st-hpn'),
+      hpb:  document.getElementById('st-hpb'),
+      dmg:  document.getElementById('st-dmg'),
+      hit:  document.getElementById('st-hit'),
+      wp:   document.getElementById('st-wp'),
       endT: document.getElementById('st-end-t'),
       cross: document.getElementById('st-cross'),
     };
@@ -357,9 +412,145 @@ export class Story {
     this._next();
   }
 
+  // ── 월드 좌표 → 화면 좌표 ─────────────────────────────────────────────────
+  //  카메라 뒤쪽 점은 NDC 가 뒤집히므로 카메라 공간 z 로 앞뒤를 먼저 판정한다.
+  _project(x, y, z) {
+    const cam = this.g.camera;
+    const v = this._pv || (this._pv = new this.THREE.Vector3());
+    v.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
+    const inFront = v.z < 0;
+    v.applyMatrix4(cam.projectionMatrix);
+    let nx = v.x, ny = v.y;
+    if (!inFront) { nx = -nx; ny = -ny; }
+    return { x: (nx * 0.5 + 0.5) * innerWidth, y: (-ny * 0.5 + 0.5) * innerHeight, inFront };
+  }
+
+  _marker(key, cls) {
+    this._wps = this._wps || new Map();
+    let el = this._wps.get(key);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'wp ' + cls;
+      el.innerHTML = cls === 'enemy'
+        ? '<div class="ic"></div><div class="hb"><i></i></div>'
+        : '<div class="ic"></div><div class="d"></div>';
+      this.ui.wp.appendChild(el);
+      this._wps.set(key, el);
+    }
+    return el;
+  }
+
+  // 카드 · 목표 · 적을 화면에 표시한다. 이게 없으면 아무것도 못 찾는다.
+  _updateMarkers() {
+    if (!this.ui.wp) return;
+    const seen = new Set();
+    const cam = this.g.camera;
+    const px = cam.position.x, pz = cam.position.z;
+    const PAD = 46, TOP = 118, BOT = 132;
+
+    const place = (key, cls, wx, wy, wz, label, extra) => {
+      const s = this._project(wx, wy, wz);
+      const el = this._marker(key, cls);
+      const off = !s.inFront || s.x < PAD || s.x > innerWidth - PAD ||
+                  s.y < TOP || s.y > innerHeight - BOT;
+      const cx = Math.max(PAD, Math.min(innerWidth - PAD, s.x));
+      const cy = Math.max(TOP, Math.min(innerHeight - BOT, s.y));
+      el.style.left = cx + 'px';
+      el.style.top = cy + 'px';
+      el.style.display = '';
+      el.classList.toggle('off', off);
+      const ic = el.firstChild;
+      if (label !== undefined && ic.textContent !== label) ic.textContent = label;
+      if (extra !== undefined) {
+        const d = el.querySelector('.d');
+        if (d && d.textContent !== extra) d.textContent = extra;
+      }
+      seen.add(key);
+      return el;
+    };
+
+    // 사연 카드 — 남은 것만. 인트로 중에도 보여줘야 어디로 갈지 알 수 있다.
+    if (this.state !== 'return' && this.state !== 'done') {
+      for (const c of this.cards) {
+        if (c.taken) continue;
+        const d = Math.hypot(px - c.x, pz - c.z);
+        place('card' + c.id, 'card', c.x, 2.0, c.z, String(c.id), Math.round(d) + 'm');
+      }
+    }
+    // 복귀 지점
+    if (this.state === 'return') {
+      const d = Math.hypot(px - GOAL.x, pz - GOAL.z);
+      const el = place('goal', 'card', GOAL.x, 2.2, GOAL.z, '★', Math.round(d) + 'm');
+      el.querySelector('.ic').style.borderColor = '#4dd2ff';
+      el.querySelector('.ic').style.color = '#4dd2ff';
+    }
+    // 상대 팀 — 45m 이내 생존자
+    const list = this.g.registry?.enemies || [];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      const pos = e?.position;
+      if (!pos || e.alive === false) continue;
+      const d = Math.hypot(px - pos.x, pz - pos.z);
+      if (d > 45) continue;
+      const el = place('e' + i, 'enemy', pos.x, pos.y + 0.95, pos.z);
+      const hb = el.querySelector('.hb');
+      const hp = (typeof e.hp === 'number' && typeof e.maxHp === 'number') ? e.hp / e.maxHp : 1;
+      if (hb) {
+        hb.style.display = hp < 0.999 ? '' : 'none';
+        hb.firstChild.style.width = Math.max(0, hp * 100) + '%';
+      }
+    }
+    // 사라진 마커 정리
+    if (this._wps) {
+      for (const [k, el] of this._wps) if (!seen.has(k)) el.style.display = 'none';
+    }
+  }
+
+  // 체력 · 명중 · 제압 피드백
+  _updateCombatFeedback() {
+    const B = this.g.ballistics;
+    if (!B) return;
+    // 체력
+    const hp = B.playerHp, max = B.playerMaxHp || 100;
+    if (typeof hp === 'number') {
+      const r = Math.max(0, Math.min(1, hp / max));
+      if (this.ui.hpb) {
+        this.ui.hpb.style.width = (r * 100) + '%';
+        this.ui.hpb.className = r < 0.3 ? 'low' : (r < 0.6 ? 'mid' : '');
+      }
+      if (this.ui.hpn) this.ui.hpn.textContent = Math.round(hp);
+      if (this._prevHp !== undefined && hp < this._prevHp - 0.5) {
+        this.ui.dmg?.classList.add('on');
+        clearTimeout(this._dmgT);
+        this._dmgT = setTimeout(() => this.ui.dmg?.classList.remove('on'), 90);
+      }
+      this._prevHp = hp;
+    }
+    // 명중 / 제압
+    const st = B.stats || {};
+    if (this._prevHits === undefined) { this._prevHits = st.hits || 0; this._prevKills = st.kills || 0; }
+    const killed = (st.kills || 0) > this._prevKills;
+    if ((st.hits || 0) > this._prevHits || killed) {
+      const el = this.ui.hit;
+      if (el) {
+        el.classList.toggle('kill', killed);
+        el.classList.remove('on');
+        void el.offsetWidth;              // 리플로우로 애니메이션 재시작
+        el.classList.add('on');
+        clearTimeout(this._hitT);
+        this._hitT = setTimeout(() => el.classList.remove('on'), 130);
+      }
+      if (killed) this._toast('제압!');
+    }
+    this._prevHits = st.hits || 0;
+    this._prevKills = st.kills || 0;
+  }
+
   // ── 프레임 ────────────────────────────────────────────────────────────────
   update(dt) {
     this.elapsed += dt;
+    this._updateMarkers();
+    this._updateCombatFeedback();
 
     // 탄약 / 제압 수 — 원본 엔진 값을 그대로 읽어 한글 HUD 에 반영한다.
     // 인트로 이전에도 HUD 는 살아 있어야 하므로 boot 분기보다 위에 둔다.
@@ -382,6 +573,7 @@ export class Story {
                   ['PD',   '상대 팀도 저러고 촬영비 받는 거야. 계속 가자.']]);
       }
     }
+
 
     // 시작 게이트를 지나 실제로 조작이 시작되면 인트로를 연다
     if (this.state === 'boot') {
