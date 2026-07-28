@@ -17,6 +17,8 @@ import { Decals }     from './fx/Decals.js';
 import { Enemies }    from './ai/Enemies.js';
 import { Audio }      from './audio/Audio.js';
 import { HUD }        from './ui/HUD.js';
+import { ThirdPerson }  from './camera/ThirdPerson.js';
+import { TouchControls } from './input/TouchControls.js';
 import { Story }      from './story/Story.js';
 
 const bootbar = document.querySelector('#bar > i');
@@ -51,6 +53,9 @@ class Game {
       ['decals',     () => new Decals(this),     'DECAL SYSTEM'],
       ['particles',  () => new Particles(this),  'PARTICLE SYSTEM'],
       ['controller', () => new Controller(this), 'PLAYER'],
+      // 3인칭은 Controller 바로 뒤에서 돌아야 한다 — 카메라 확정 직후에 뒤로 물린다.
+      ['thirdperson',() => new ThirdPerson(this), 'CAMERA'],
+      ['touch',      () => new TouchControls(this), 'TOUCH'],
       ['weapon',     () => new Weapon(this),     'WEAPON'],
       ['ballistics', () => new Ballistics(this), 'BALLISTICS'],
       ['enemies',    () => new Enemies(this),    'AI'],

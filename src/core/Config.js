@@ -46,6 +46,9 @@ export const Config = {
   // (원본 BLACKSITE 는 14. 이 값만 바꾸면 Enemies 모듈이 아무도 만들지 않는다.)
   ai: { count: 0, sightRange: 90, fov: 120, reactionTime: 0.28 },
 
+  // 3인칭 아바타 외형 — 'staff'(매불쇼 스태프) | 'operator'(원본)
+  avatar: { variant: 'staff' },
+
   audio: { master: 0.8, sfx: 1.0, music: 0.35 },
 
   debug: { stats: false, freecam: false },
