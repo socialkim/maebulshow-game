@@ -10,6 +10,9 @@
 
 설치도, 클론도, `npm install` 도 필요 없습니다. 링크를 열고 화면을 한 번 클릭하면 시작됩니다.
 
+> 이 게임이 원본에서 어떻게 갈라져 나와 지금까지 바뀌어 왔는지는
+> **[진화 기록 대시보드](https://socialkim.github.io/blacksite-fps/evolution/)** 에 전부 정리되어 있습니다.
+
 ![대화 장면](docs/screenshots/01-dialogue.png)
 
 ---
