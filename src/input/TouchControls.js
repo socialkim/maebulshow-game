@@ -64,7 +64,7 @@ export class TouchControls {
         #tbtns .b.sm { width:60px; height:60px; font-size:12px; }
         #tbtns .b:active, #tbtns .b.act { background:rgba(255,201,77,.75); color:#12161c;
                                           border-color:rgba(255,201,77,.95); }
-        #tview { position:absolute; right:18px; top:calc(env(safe-area-inset-top,0px) + 96px);
+        #tview { position:absolute; right:18px; top:calc(env(safe-area-inset-top,0px) + 152px);
                  padding:10px 15px; border-radius:999px; background:rgba(0,0,0,.36);
                  border:1px solid rgba(255,255,255,.30); color:#fff; font-size:12.5px; font-weight:700; }
         #thint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
@@ -217,7 +217,12 @@ export class TouchControls {
     }
   }
 
-  update() {}
+  update() {
+    // Story 는 이 모듈보다 나중에 만들어진다. UI 가 준비되면 한 번만 문구를 바꾼다.
+    if (!this.enabled || this._fixedHint) return;
+    const n = document.getElementById('st-next');
+    if (n) { n.textContent = '화면을 탭하면 다음'; this._fixedHint = true; }
+  }
   resize() {}
 }
 
