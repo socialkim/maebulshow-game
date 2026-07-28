@@ -81,7 +81,11 @@
     var t = setInterval(function () {
       if (window.__GAME && window.__GAME.ready) { clearInterval(t); gate.classList.add('show'); }
     }, 200);
-    gate.addEventListener('click', function () { gate.classList.remove('show'); }, { once: true });
+    // 게이트가 뜨기 전에 클릭한 경우에도 반드시 닫히도록 한 번만 걸지 않는다.
+    var close = function () { gate.classList.remove('show'); };
+    gate.addEventListener('click', close);
+    gate.addEventListener('touchstart', close, { passive: true });
+    window.addEventListener('keydown', close);
   })();
   </script>
 </body>
