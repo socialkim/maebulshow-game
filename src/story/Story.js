@@ -21,7 +21,7 @@ const GOAL_COLOR = 0x4dd2ff;
 
 // 수집품 배치 — 카메라 프리셋으로 검증된 보행 가능 구역 안에 둔다.
 const CARDS = [
-  { id: 1, x:   3.0, z:  13.5, label: '사연 카드 ①' },
+  { id: 1, x:   1.6, z:  14.4, label: '사연 카드 ①' },
   { id: 2, x:  -6.2, z:   8.0, label: '사연 카드 ②' },
   { id: 3, x:   9.8, z:   1.5, label: '사연 카드 ③' },
   { id: 4, x:  -7.2, z:  -4.6, label: '사연 카드 ④' },
@@ -29,6 +29,11 @@ const CARDS = [
 ];
 
 const GOAL = { x: 0, z: 17.5 };
+
+// 스폰 — yaw 0 이 -z(컴파운드) 방향이다. 180 이면 등지게 되므로 반드시 0 으로 맞춘다.
+// (측정: forward = (-sin(yaw), -cos(yaw)) — yaw 0 -> (0,-1), yaw 180 -> (0,+1))
+const SPAWN = { x: 0, y: 1.62, z: 18.5, yaw: 0 };
+const LIVES = 3;
 
 // ── 대사 데이터 ──────────────────────────────────────────────────────────────
 const INTRO = [
@@ -57,6 +62,17 @@ const OUTRO = [
   ['최욱',     '자, 그럼 시작합니다. 압도적 재미 — 매불쇼!'],
 ];
 
+const DEATH = [
+  [['PD',   '야! 맞았어! …페인트 범벅이네.'],
+   ['최욱', '일어나. 아직 촬영 안 끝났어. 목숨 두 개 남았다.']],
+  [['최욱', '또야? 신입, 이러다 진짜 1부 못 연다.'],
+   ['PD',   '스페어 조끼 입혀서 다시 투입해. 마지막 한 번 남았어.']],
+];
+
+const FAILED = [
+  ['PD',   '…신입 아웃. 더는 못 세워.'],
+];
+
 const TIMEUP = [
   ['PD',   '큐 들어갔어! 방송 이미 시작했다고!'],
   ['최욱', '괜찮아, 내가 오프닝 늘릴게. 신입 너는 카드나 계속 가져와.'],
@@ -79,6 +95,11 @@ export class Story {
     this.line = null;
     this.typed = 0;
     this.typeT = 0;
+
+    // 목숨 / 사망 / 실패
+    this.lives = LIVES;
+    this.dead = false;
+    this.failed = false;
 
     this.cards = [];
     this.goalMesh = null;
@@ -228,6 +249,18 @@ export class Story {
         #st-kill b { color: #ffc94d; font-size: 18px; }
 
         /* 체력 */
+        #st-lives { position: absolute; left: 30px; bottom: 116px; display: flex; gap: 7px;
+                    align-items: center; font-size: 11px; letter-spacing: .22em;
+                    color: #ffc94d; font-weight: 700; }
+        #st-lives em { font-style: normal; margin-right: 5px; }
+        #st-lives i { width: 15px; height: 15px; border-radius: 3px; background: #ff5a4f;
+                      transform: rotate(45deg); box-shadow: 0 0 10px rgba(255,90,79,.65); }
+        #st-lives i.out { background: rgba(255,255,255,.18); box-shadow: none; }
+        /* 터치 UI 가 켜지면 사격 버튼과 겹치지 않게 탄약을 위로 올린다 */
+        body.touch-ui #st-ammo { bottom: 128px; }
+        body.touch-ui #st-kill { bottom: 96px; }
+        body.touch-ui #st-hp { bottom: 132px; }
+        body.touch-ui #st-lives { bottom: 186px; }
         #st-hp { position: absolute; left: 30px; bottom: 62px; width: 260px; }
         #st-hp .l { font-size: 11px; letter-spacing: .22em; color: #ffc94d; font-weight: 700;
                     display: flex; justify-content: space-between; }
@@ -294,6 +327,11 @@ export class Story {
         #st-end h2 { font-size: clamp(30px,6vw,58px); font-weight: 800; letter-spacing: .04em; }
         #st-end .t { font-size: 17px; color: #ffc94d; margin-top: 16px; }
         #st-end .n { font-size: 13px; color: #8e96a3; margin-top: 26px; line-height: 1.8; }
+        #st-retry { display: inline-block; margin-top: 16px; padding: 12px 28px;
+                    border: 1px solid rgba(255,255,255,.4); border-radius: 999px;
+                    color: #fff; font-weight: 700; font-size: 14px;
+                    cursor: pointer; pointer-events: auto; }
+        #st-retry:hover { background: rgba(255,255,255,.12); }
       </style>
       <div id="st-top">
         <div id="st-obj-l">현재 목표</div>
@@ -306,6 +344,7 @@ export class Story {
       <div id="st-ammo"><div class="w" id="st-wname">M4A1</div>
         <div class="n" id="st-mag">30<small> / 210</small></div></div>
       <div id="st-kill">제압 <b id="st-kills">0</b></div>
+      <div id="st-lives"><em>목숨</em><i></i><i></i><i></i></div>
       <div id="st-hp"><div class="l"><span>체력</span><b id="st-hpn">100</b></div>
         <div class="bar"><i id="st-hpb"></i></div></div>
       <div id="st-dmg"></div>
@@ -318,11 +357,20 @@ export class Story {
         <div id="st-txt"></div>
         <div id="st-next">스페이스 / 클릭 — 다음</div>
       </div>
-      <div id="st-end"><div>
-        <h2>ON AIR</h2>
-        <div class="t" id="st-end-t"></div>
-        <div class="n">압도적 재미 — 매불쇼<br>이 게임은 팬메이드 패러디이며 모든 대사는 창작입니다.</div>
-      </div></div>`;
+      <div id="st-end">
+        <div id="st-clear-box">
+          <h2>ON AIR</h2>
+          <div class="t" id="st-end-t"></div>
+          <div class="n">압도적 재미 — 매불쇼<br>이 게임은 팬메이드 패러디이며 모든 대사는 창작입니다.</div>
+        </div>
+        <div id="st-fail-box" style="display:none">
+          <h2 style="color:#ff5a4f">미션 실패</h2>
+          <div class="t" id="st-fail-t"></div>
+          <div class="n">사연 카드를 다 못 가져왔습니다. 오늘 1부는 최욱 씨 혼자 열게 생겼습니다.<br>
+            <span id="st-retry">다시 시작</span>
+          </div>
+        </div>
+      </div>`;
     document.body.appendChild(el);
 
     this.ui = {
@@ -345,6 +393,10 @@ export class Story {
       hit:  document.getElementById('st-hit'),
       wp:   document.getElementById('st-wp'),
       endT: document.getElementById('st-end-t'),
+      clearBox: document.getElementById('st-clear-box'),
+      failBox: document.getElementById('st-fail-box'),
+      failT: document.getElementById('st-fail-t'),
+      lives: document.getElementById('st-lives'),
       cross: document.getElementById('st-cross'),
     };
     for (let i = 0; i < this.total; i++) {
@@ -376,6 +428,7 @@ export class Story {
 
   // ── 대화 ──────────────────────────────────────────────────────────────────
   say(lines, done) {
+    if (!Array.isArray(lines) || !lines.length) { if (done) done(); return; }
     this.queue = lines.slice();
     this._onDone = done || null;
     this.paused = true;
@@ -506,6 +559,56 @@ export class Story {
     }
   }
 
+  // ── 사망 · 부활 · 실패 ────────────────────────────────────────────────────
+  _setLives() {
+    const n = this.ui.lives?.querySelectorAll('i');
+    if (!n) return;
+    for (let i = 0; i < n.length; i++) n[i].classList.toggle('out', i >= this.lives);
+  }
+
+  _spawnPlayer() {
+    // yaw 0 = -z(컴파운드) 방향. 이걸 안 맞추면 카드가 전부 등 뒤에 놓인다.
+    this.g.controller?.teleport?.(SPAWN.x, SPAWN.y, SPAWN.z, SPAWN.yaw, 0);
+  }
+
+  _die() {
+    if (this.dead || this.failed || this.state === 'done') return;
+    this.dead = true;
+    this.lives = Math.max(0, this.lives - 1);
+    this._setLives();
+    this.ui.dmg?.classList.add('on');
+    setTimeout(() => this.ui.dmg?.classList.remove('on'), 260);
+
+    if (this.lives <= 0) { this.say(FAILED, () => this._fail()); return; }
+    const lines = DEATH[Math.min(DEATH.length - 1, LIVES - 1 - this.lives)];
+    this.say(lines, () => this._respawn());
+  }
+
+  _respawn() {
+    const B = this.g.ballistics;
+    if (B) B.playerHp = B.playerMaxHp || 100;
+    this._prevHp = B?.playerHp;
+    // 무기 재장전 상태로 되돌려 부활 직후 빈 탄창으로 시작하지 않게 한다
+    try { if (this.g.weapon && typeof this.g.weapon.mag === 'number') this.g.weapon.mag = this.g.config?.weapon?.magSize ?? 30; } catch (e) {}
+    this._spawnPlayer();
+    this.dead = false;
+    this._toast('재투입!');
+  }
+
+  _fail() {
+    this.failed = true;
+    if (this.ui.clearBox) this.ui.clearBox.style.display = 'none';
+    if (this.ui.failBox) this.ui.failBox.style.display = '';
+    if (this.ui.failT) {
+      this.ui.failT.textContent =
+        '회수한 사연 카드 ' + this.collected + ' / ' + this.total + '  ·  제압 ' + (this._kills || 0);
+    }
+    if (this.ui.end) this.ui.end.classList.add('on');
+    try { document.exitPointerLock?.(); } catch (e) {}
+    const btn = document.getElementById('st-retry');
+    if (btn && !btn._wired) { btn._wired = true; btn.addEventListener('click', () => location.reload()); }
+  }
+
   // 체력 · 명중 · 제압 피드백
   _updateCombatFeedback() {
     const B = this.g.ballistics;
@@ -519,6 +622,7 @@ export class Story {
         this.ui.hpb.className = r < 0.3 ? 'low' : (r < 0.6 ? 'mid' : '');
       }
       if (this.ui.hpn) this.ui.hpn.textContent = Math.round(hp);
+      if (hp <= 0) this._die();
       if (this._prevHp !== undefined && hp < this._prevHp - 0.5) {
         this.ui.dmg?.classList.add('on');
         clearTimeout(this._dmgT);
@@ -579,6 +683,7 @@ export class Story {
     if (this.state === 'boot') {
       if ((document.pointerLockElement || this._entered) && this.elapsed > 0.15) {
         this.state = 'intro';
+        this._spawnPlayer();          // 컴파운드를 마주보게 돌린다 (카드가 앞에 오도록)
         this.say(INTRO, () => {
           this.state = 'hunt';
           this._setObjective('사연 카드를 찾아라', '야외 세트에 다섯 장이 흩어져 있다');
@@ -682,6 +787,8 @@ export class Story {
       this.ui.endT.textContent =
         '사연 카드 ' + this.total + '장 회수 완료  ·  소요 시간 ' + m + '분 ' + String(s).padStart(2, '0') + '초';
     }
+    if (this.ui.clearBox) this.ui.clearBox.style.display = '';
+    if (this.ui.failBox) this.ui.failBox.style.display = 'none';
     if (this.ui.end) this.ui.end.classList.add('on');
     try { document.exitPointerLock?.(); } catch (e) {}
   }

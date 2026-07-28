@@ -34,6 +34,7 @@ export class TouchControls {
       !window.matchMedia('(pointer: fine)').matches;
     if (!isTouch) return;              // 데스크톱이면 조용히 빠진다
     this.enabled = true;
+    document.body.classList.add('touch-ui');   // HUD 가 버튼을 피해 배치되도록
     this._buildUI();
     this._bind();
   }
@@ -57,7 +58,15 @@ export class TouchControls {
         #tknob { position:absolute; left:50%; top:50%; width:62px; height:62px;
                  margin:-31px 0 0 -31px; border-radius:50%;
                  background:rgba(255,255,255,.30); border:2px solid rgba(255,255,255,.55); }
-        #tbtns { position:absolute; right:18px; bottom:22px; display:flex; gap:12px; align-items:flex-end; }
+        #tbtns { position:absolute; right:18px; bottom:22px; display:flex; gap:11px; align-items:flex-end; }
+        #tbtns .b.fire { width:96px; height:96px; font-size:16px; border-color:rgba(255,90,79,.75);
+                         background:rgba(255,90,79,.28); }
+        #tbtns2 { position:absolute; right:126px; bottom:132px; display:flex; flex-direction:column; gap:11px; }
+        #tbtns2 .b { width:64px; height:64px; border-radius:50%; display:grid; place-items:center;
+                     background:rgba(0,0,0,.34); border:2px solid rgba(255,255,255,.34);
+                     color:#fff; font-size:12px; font-weight:800; }
+        #tbtns2 .b:active, #tbtns2 .b.act { background:rgba(255,201,77,.75); color:#12161c;
+                                            border-color:rgba(255,201,77,.95); }
         #tbtns .b { width:76px; height:76px; border-radius:50%; display:grid; place-items:center;
                     background:rgba(0,0,0,.34); border:2px solid rgba(255,255,255,.34);
                     color:#fff; font-size:14px; font-weight:800; }
@@ -74,9 +83,14 @@ export class TouchControls {
       <div class="zone" id="tz-move"><div id="tstick"><div id="tknob"></div></div></div>
       <div class="zone" id="tz-look"></div>
       <div id="tview">시점 전환</div>
+      <div id="tbtns2">
+        <div class="b" id="tb-ads">조준</div>
+        <div class="b" id="tb-reload">장전</div>
+      </div>
       <div id="tbtns">
         <div class="b sm" id="tb-crouch">앉기</div>
-        <div class="b" id="tb-jump">점프</div>
+        <div class="b sm" id="tb-jump">점프</div>
+        <div class="b fire" id="tb-fire">사격</div>
       </div>
       <div id="thint">왼쪽 드래그 — 이동  ·  오른쪽 드래그 — 시야</div>`;
     document.body.appendChild(el);
@@ -89,6 +103,9 @@ export class TouchControls {
     this.bJump = el.querySelector('#tb-jump');
     this.bCrouch = el.querySelector('#tb-crouch');
     this.bView = el.querySelector('#tview');
+    this.bFire = el.querySelector('#tb-fire');
+    this.bAds = el.querySelector('#tb-ads');
+    this.bReload = el.querySelector('#tb-reload');
   }
 
   // ── 입력 ──────────────────────────────────────────────────────────────────
@@ -206,6 +223,51 @@ export class TouchControls {
         if (!toggle) { node.classList.remove('act'); key(code, false); }
       }, { passive: false });
     };
+    // Weapon 의 마우스 핸들러는 포인터 락을 요구한다(_locked()). 모바일에는 락이 없으므로
+    // 합성 이벤트로는 절대 발사되지 않는다. 그래서 무기 상태를 직접 세팅한다.
+    const trigger = (down) => {
+      const w = this.g?.weapon;
+      if (!w) return;
+      w.triggerHeld = !!down;
+      if (down && typeof w._fireTimer === 'number') w._fireTimer = Math.min(w._fireTimer, 0);
+    };
+    const wireFire = (node) => {
+      if (!node) return;
+      node.addEventListener('touchstart', (e) => {
+        e.stopPropagation(); if (e.cancelable) e.preventDefault();
+        if (paused()) { this.g.story.advance(); return; }
+        node.classList.add('act');
+        trigger(true);
+      }, { passive: false });
+      const up = (e) => {
+        e.stopPropagation(); if (e.cancelable) e.preventDefault();
+        node.classList.remove('act');
+        trigger(false);
+      };
+      node.addEventListener('touchend', up, { passive: false });
+      node.addEventListener('touchcancel', up, { passive: false });
+    };
+    wireFire(this.bFire);
+
+    if (this.bAds) {
+      this.bAds.addEventListener('touchstart', (e) => {
+        e.stopPropagation(); if (e.cancelable) e.preventDefault();
+        if (paused()) { this.g.story.advance(); return; }
+        this._ads = !this._ads;
+        this.bAds.classList.toggle('act', this._ads);
+        this.g.weapon?.setAds?.(this._ads);
+      }, { passive: false });
+    }
+    if (this.bReload) {
+      this.bReload.addEventListener('touchstart', (e) => {
+        e.stopPropagation(); if (e.cancelable) e.preventDefault();
+        if (paused()) { this.g.story.advance(); return; }
+        this.bReload.classList.add('act');
+        setTimeout(() => this.bReload.classList.remove('act'), 180);
+        this.g.weapon?.reload?.();
+      }, { passive: false });
+    }
+
     hold(this.bJump, 'Space', false);
     hold(this.bCrouch, 'ControlLeft', true);
 
@@ -218,6 +280,11 @@ export class TouchControls {
   }
 
   update() {
+    // 대화가 열리면 방아쇠를 강제로 놓는다 (버튼에서 손을 떼지 못한 채 멈추는 것 방지)
+    if (this.enabled && this.g?.story?.paused && this.g?.weapon?.triggerHeld) {
+      this.g.weapon.triggerHeld = false;
+      this.bFire?.classList.remove('act');
+    }
     // Story 는 이 모듈보다 나중에 만들어진다. UI 가 준비되면 한 번만 문구를 바꾼다.
     if (!this.enabled || this._fixedHint) return;
     const n = document.getElementById('st-next');
